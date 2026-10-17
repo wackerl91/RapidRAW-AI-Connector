@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     COMFY_PORT: int = 5545
     CACHE_DIR: Path = Path("./cache")
     WORKFLOW_FILE: Path = Path("workflow.json")
-    COMFY_INPUT_DIR: Path = Path("/home/ludwig/Documents/git-repos/ComfyUI/input")
+    COMFY_INPUT_DIR: Path = Path(os.environ.get("COMFY_INPUT_DIR", "./comfyui_input"))
     MAX_CACHE_FILES: int = 20
     MAX_CACHE_SIZE_MB: int = 2048
 
@@ -198,6 +198,17 @@ class ComfyClient:
         self.client_id = str(uuid.uuid4())
         self.session = None
 
+    def _cleanup_staged(self):
+        """Remove files staged into ComfyUI's input dir after a run."""
+        for path in _staged_files:
+            try:
+                if path.exists():
+                    path.unlink()
+                    logger.info(f"Cleaned up staged file: {path.name}")
+            except Exception as e:
+                logger.warning(f"Failed to clean up {path}: {e}")
+        _staged_files.clear()
+
     @staticmethod
     async def check_health() -> bool:
         try:
@@ -240,6 +251,8 @@ class ComfyClient:
             except Exception as e:
                 logger.error(f"ComfyUI execution failed: {e}")
                 raise
+            finally:
+                self._cleanup_staged()
 
     async def _queue_prompt(self, workflow: dict) -> str:
         payload = {"prompt": workflow, "client_id": self.client_id}
@@ -288,9 +301,13 @@ async def save_inputs_for_debug(source_path: Path, mask_bytes: bytes):
     except Exception as e:
         logger.error(f"Failed to save debug inputs: {e}", exc_info=True)
 
+_staged_files: list[Path] = []  # files staged into ComfyUI's input dir for the current run
+
+
 def stage_for_comfyui(abs_path: str) -> str:
     """Copy a cache file into ComfyUI's input dir and return the relative
-    filename ComfyUI's LoadImage expects. Absolute paths fail validation."""
+    filename ComfyUI's LoadImage expects. Absolute paths fail validation.
+    Staged files are tracked and cleaned up after each run."""
     src = Path(abs_path)
     if not src.exists():
         logger.error(f"File to stage does not exist: {src}")
@@ -301,6 +318,8 @@ def stage_for_comfyui(abs_path: str) -> str:
     if not dst.exists() or dst.stat().st_mtime < src.stat().st_mtime:
         shutil.copy2(src, dst)
         logger.info(f"Staged {src.name} -> {dst}")
+    if dst not in _staged_files:
+        _staged_files.append(dst)
     return dst.name
 
 
