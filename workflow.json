@@ -1,7 +1,7 @@
 {
   "1": {
     "inputs": {
-      "ckpt_name": "XL_RealVisXL_V5.0_Lightning.safetensors"
+      "ckpt_name": "juggernautXL_juggXIByRundiffusion.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
@@ -90,7 +90,7 @@
   },
   "12": {
     "inputs": {
-      "control_net_name": "diffusion_pytorch_model_promax.safetensors"
+      "control_net_name": "SDXL/controlnet-union-sdxl-1.0/diffusion_pytorch_model_promax.safetensors"
     },
     "class_type": "ControlNetLoader",
     "_meta": {
@@ -237,12 +237,12 @@
     },
     "class_type": "InpaintStitchImproved",
     "_meta": {
-      "title": "✂️ Inpaint Stitch (Improved)"
+      "title": "\u2702\ufe0f Inpaint Stitch (Improved)"
     }
   },
   "36": {
     "inputs": {
-      "device_mode" : "gpu (much faster)",
+      "device_mode": "gpu (much faster)",
       "downscale_algorithm": "bilinear",
       "upscale_algorithm": "bicubic",
       "preresize": false,
@@ -283,7 +283,7 @@
     },
     "class_type": "InpaintCropImproved",
     "_meta": {
-      "title": "✂️ Inpaint Crop (Improved)"
+      "title": "\u2702\ufe0f Inpaint Crop (Improved)"
     }
   },
   "37": {

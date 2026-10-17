@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     COMFY_PORT: int = 5545
     CACHE_DIR: Path = Path("./cache")
     WORKFLOW_FILE: Path = Path("workflow.json")
+    COMFY_INPUT_DIR: Path = Path("/home/ludwig/Documents/git-repos/ComfyUI/input")
     MAX_CACHE_FILES: int = 20
     MAX_CACHE_SIZE_MB: int = 2048
 
@@ -287,6 +288,22 @@ async def save_inputs_for_debug(source_path: Path, mask_bytes: bytes):
     except Exception as e:
         logger.error(f"Failed to save debug inputs: {e}", exc_info=True)
 
+def stage_for_comfyui(abs_path: str) -> str:
+    """Copy a cache file into ComfyUI's input dir and return the relative
+    filename ComfyUI's LoadImage expects. Absolute paths fail validation."""
+    src = Path(abs_path)
+    if not src.exists():
+        logger.error(f"File to stage does not exist: {src}")
+        raise FileNotFoundError(f"Missing image for ComfyUI: {src}")
+
+    config.COMFY_INPUT_DIR.mkdir(parents=True, exist_ok=True)
+    dst = config.COMFY_INPUT_DIR / src.name
+    if not dst.exists() or dst.stat().st_mtime < src.stat().st_mtime:
+        shutil.copy2(src, dst)
+        logger.info(f"Staged {src.name} -> {dst}")
+    return dst.name
+
+
 def build_workflow(source_path: str, mask_path: str, prompt: str, neg_prompt: str, seed: int) -> dict:
     if not config.WORKFLOW_FILE.exists():
         logger.error(f"Workflow file not found at {config.WORKFLOW_FILE.absolute()}")
@@ -306,8 +323,8 @@ def build_workflow(source_path: str, mask_path: str, prompt: str, neg_prompt: st
         wf["7"]["inputs"]["text"] = ", ".join(filter(None, [prompt, wf["7"]["inputs"]["text"]]))
         wf["8"]["inputs"]["text"] = ", ".join(filter(None, [neg_prompt, wf["8"]["inputs"]["text"]]))
 
-        source = source_path.replace("\\", "/")
-        mask = mask_path.replace("\\", "/")
+        source = stage_for_comfyui(source_path.replace("\\", "/"))
+        mask = stage_for_comfyui(mask_path.replace("\\", "/"))
 
         wf["30"]["inputs"]["image"] = source
         wf["47"]["inputs"]["image"] = mask
